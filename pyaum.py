@@ -50,13 +50,13 @@ import json as _json
 import requests as _requests
 import jwt as _jwt
 import pandas as _pd
-from pathlib import Path
+from pathlib import _Path
 
 ### Set up default values
 _org_id, _api_key, _tech_id, _pathToKey, _secret = "","","","","",
 _TokenEndpoint = "https://ims-na1.adobelogin.com/ims/exchange/jwt"
 _orga_admin ={'_org_admin','_deployment_admin','_support_admin'}
-_cwd = Path.as_posix(Path.cwd())
+_cwd = _Path.as_posix(_Path.cwd())
 _date_limit = 0
 _token = ''
 
@@ -124,7 +124,7 @@ def retrievingToken(verbose=False):
         f.write(token)
     if verbose == True:
         print('token valid till : ' + _time.ctime(_time.time()+ expire/1000))
-        print('token has been saved here : ' + Path.as_posix(Path.cwd()))
+        print('token has been saved here : ' + _Path.as_posix(_Path.cwd()))
     return token
 
 def _checkTokenValidity(func):
@@ -876,11 +876,3 @@ class groupHandler:
         elif action == 'remove':
             self.delete_users = []
         return list_response
-
-    
-
-   
-## response possible status : 
-## - success
-## - partial
-## - error
