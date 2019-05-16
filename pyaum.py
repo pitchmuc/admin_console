@@ -50,7 +50,7 @@ import json as _json
 import requests as _requests
 import jwt as _jwt
 import pandas as _pd
-from pathlib import _Path
+from pathlib import Path as _Path
 
 ### Set up default values
 _org_id, _api_key, _tech_id, _pathToKey, _secret = "","","","","",
