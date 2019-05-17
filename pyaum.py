@@ -130,14 +130,12 @@ def retrievingToken(verbose=False):
 def _checkTokenValidity(func):
     """ decorator : Check if the request can be made with the previous token, otherwise give a new token"""
     global _token
-    print('token availibility')
     currentTime = _time.time()
     def argumentVerification(*args, token=_token, **kwargs):
         if currentTime-500 > _date_limit:## if actual timestamp higher than date limit
             global _token
             _token = retrievingToken()
             return func(*args,token=_token,**kwargs)
-        print('token availibility 2')
         return func(*args,**kwargs)
     return argumentVerification
 
