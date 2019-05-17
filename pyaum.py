@@ -44,7 +44,7 @@ The different method available :
 """
 import time as _time
 import re as _re
-from concurrent import futures
+from concurrent import futures as _futures
 import json as _json
 ## Non standard libraries
 import requests as _requests
@@ -130,12 +130,14 @@ def retrievingToken(verbose=False):
 def _checkTokenValidity(func):
     """ decorator : Check if the request can be made with the previous token, otherwise give a new token"""
     global _token
+    print('token availibility')
     currentTime = _time.time()
     def argumentVerification(*args, token=_token, **kwargs):
-        if currentTime-500 > _date_limit:
+        if currentTime-500 > _date_limit:## if actual timestamp higher than date limit
             global _token
             _token = retrievingToken()
             return func(*args,token=_token,**kwargs)
+        print('token availibility 2')
         return func(*args,**kwargs)
     return argumentVerification
 
@@ -519,7 +521,7 @@ def create_users(usersInformation=None, accessType='adobe' ,verbose=False):
     if verbose:
         print('list of users to create: ' + listOfData )
         print('number of thread created : '+str(workers))
-    with futures.ThreadPoolExecutor(workers) as executor:
+    with _futures.ThreadPoolExecutor(workers) as executor:
         res = executor.map(_createRequest,listOfData) ##return a generator
     responses = list(res)
     return responses
@@ -567,7 +569,7 @@ def create_usersGroups(groupsInformation=None, verbose=False):
     if verbose:
         print('list of groups to create: ' + listOfData )
         print('number of thread created : '+str(workers))
-    with futures.ThreadPoolExecutor(workers) as executor:
+    with _futures.ThreadPoolExecutor(workers) as executor:
         res = executor.map(_createRequest,listOfData)
     responses = list(res)
     return responses
@@ -615,7 +617,7 @@ def remove_users(usersInformation=None, verbose=False):
     if verbose:
         print('list of users to remove: ' + listOfData )
         print('number of thread created : '+str(workers))
-    with futures.ThreadPoolExecutor(workers) as executor:
+    with _futures.ThreadPoolExecutor(workers) as executor:
         res = executor.map(_createRequest,listOfData) ##return a generator
     responses = list(res)
     return responses
@@ -656,7 +658,7 @@ def remove_usersGroups(groupsInformation=None, verbose=False):
     if verbose:
         print('list of groups to remove: ' + listOfData )
         print('number of thread created : '+str(workers))
-    with futures.ThreadPoolExecutor(workers) as executor:
+    with _futures.ThreadPoolExecutor(workers) as executor:
         res = executor.map(_createRequest,listOfData)
     responses = list(res)
     return responses
@@ -729,7 +731,7 @@ class groupHandler:
     """
 
     groupName = ''
-
+    response = '' 
     def __init__(self, groupName, users=None):
         self.new_users = []
         self.delete_users = []
@@ -745,7 +747,7 @@ class groupHandler:
             self.new_users += users
 
     def addUsers(self,users=None):
-        """ Take a list or tuple of users and assigned it to the group """
+        """ Take a list or tuple of users emails and assigned it to the dimension new_users """
         if users is not None:
             if type(users) is str:
                     users = users.split(' ')
@@ -756,7 +758,7 @@ class groupHandler:
                     print('User ('+str(user)+') already exists in this group.')
     
     def _addExistingUsers(self,users=None):
-        """ Take a list or tuple of users and assigned it to the group of existing users"""
+        """ Take a list or tuple of users emails and assigned it to the group of existing users"""
         if users is not None:
             if type(users) is str:
                     users = users.split(' ')
@@ -772,48 +774,6 @@ class groupHandler:
                 if name in self.users : self.users.remove(name)
                 if name in self.new_users : self.new_users.remove(name)
                 self.delete_users.append(name)
-
-    ##Product Profile creation and management are not supported by the Adobe API at the moment.
-    
-#    def addProductProfile(self,productProfile=None):
-#        """
-#        Method to add product profile to the instance of this group. 
-#        Takes a list of product profile to remove or a single product profile.
-#        argument : 
-#            - productProfile : REQUIRED : List of product Profile to remove or string of product profile to be removed. 
-#        """
-#        if productProfile != None:
-#            if type(productProfile) is str:
-#                    productProfile = productProfile.split(' ')
-#            self.new_productProfile += productProfile
-#    
-#    def _addExistingProductProfile(self,productProfile=None):
-#        """
-#        Method to add product profile to the instance of this group. 
-#        Takes a list of product profile to remove or a single product profile.
-#        argument : 
-#            - productProfile : REQUIRED : List of product Profile to remove or string of product profile to be removed. 
-#        """
-#        if productProfile != None:
-#            if type(productProfile) is str:
-#                    productProfile = productProfile.split(' ')
-#            self.productProfile += productProfile
-#            self.productProfile = list(set(self.productProfile))
-#    
-#    def removeProductProfile(self, productProfile=None):
-#        """
-#        Method to remove product profile from the instance.
-#        Takes a list of product profile to remove or a single product profile.
-#        argument : 
-#            - productProfile : REQUIRED : List of product Profile to remove or string of product profile to be removed. 
-#        """
-#        if productProfile != None:
-#            if type(productProfile) is str:
-#                    productProfile = productProfile.split(' ')
-#            for profile in productProfile:
-#                if profile in self.productProfile : self.productProfile.remove(profile)
-#                if profile in self.new_productProfile : self.new_productProfile.remove(profile)
-#                self.remove_productProfile.append(profile)
 
     def fill_users(self,df_users=None):
         """
@@ -837,7 +797,6 @@ class groupHandler:
         def createAdminGroup(self):
             return groupHandler("_admin_"+self.groupName)
     
-    
     @_checkTokenValidity
     def syncGroup(self,action='add',token=_token):
         """ Method to update the group information on the Adobe server.
@@ -854,22 +813,26 @@ class groupHandler:
         
         """
         if action == 'add':
-            newlist_users = _limitList(self.new_users,10) ## split the list into multiple generator
+            newlist_users = list(self.new_users)
         elif action == 'remove':
-            newlist_users = _limitList(self.delete_users,10) ## split the list into multiple generator
+            newlist_users = list(self.delete_users)
         list_response = []
-        for listUsers in newlist_users:## will generate list from generator
+        group = str(self.groupName)
+        list_json = list()
+        for user in newlist_users:## will generate list from generator
             json = [{
-                "usergroup": self.groupName,
-                "do":[{action: {
-                        'user' : listUsers}
-                        }]
+                'user':str(user),
+                'do':[{
+                    str(action): {
+                        "group": [str(group)]
+                        }
                 }]
-            umapi_header = {"Content-type": "application/json", "Accept": "application/json",
-                                     "x-api-key": _api_key, "Authorization": "Bearer " + _token}
-            response = _requests.post(_endpoint_actions,headers=umapi_header, data=_json.dumps(json))
-            json_res = response.json()
-            list_response.append(json_res)
+            }]
+            list_json.append(json)
+        workers = min((len(newlist_users),10))
+        with _futures.ThreadPoolExecutor(workers) as executor:
+            res = executor.map(_createRequest,list_json)
+        list_response = list(res)
         if action == 'add':
             self._addExistingUsers(self.new_users)
             self.new_users = []
