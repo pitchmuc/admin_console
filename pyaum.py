@@ -89,7 +89,7 @@ def _updateWithOrgId(orgId):
 ## set token as keyword argument, easier to replace within decorator
 
 #def retrievingToken(org_id,tech_id,api_key,secret,private_key_unencrypted=None):
-def retrievingToken(verbose=False):
+def retrieveToken(verbose=False):
     """ Retrieve the token by using the information provided by the user during the import importConfigFile function. 
     
     Argument : 
@@ -134,7 +134,7 @@ def _checkTokenValidity(func):
     def argumentVerification(*args, token=_token, **kwargs):
         if currentTime-500 > _date_limit:## if actual timestamp higher than date limit
             global _token
-            _token = retrievingToken()
+            _token = retrieveToken()
             return func(*args,token=_token,**kwargs)
         return func(*args,**kwargs)
     return argumentVerification
@@ -333,7 +333,7 @@ def retrieveInfos(info='all',fileType='csv',verbose=False):
     if _token != "" and _date_limit > _time.time()+500 :
         _token = _token
     else : 
-        _token = retrievingToken()
+        _token = retrieveToken()
     umapi_header = {"Content-type" : "application/json","Accept" : "application/json","x-api-key" : _api_key,"Authorization" : "Bearer " + _token}
     if fileType=='xlsx':
         writer = _pd.ExcelWriter(filename, engine='xlsxwriter')
@@ -382,7 +382,7 @@ def retrieveUserDetail(user,verbose=False):
     if _token != "" and _date_limit > _time.time()+500 :
         _token = _token
     else : 
-        _token = retrievingToken()
+        _token = retrieveToken()
     umapi_header = {"Content-type" : "application/json","Accept" : "application/json","x-api-key" : _api_key,"Authorization" : "Bearer " + _token}
     data = _request_single_user(user,umapi_header)
     if data =="" and verbose is True:
@@ -513,7 +513,7 @@ def create_users(usersInformation=None, accessType='adobe' ,verbose=False):
     if _token != "" and _date_limit > _time.time()+500 :
         _token = _token
     else : 
-        _token = retrievingToken()
+        _token = retrieveToken()
     listOfData = list(_limitList(list_do,10))
     workers = min((len(listOfData),10))
     if verbose:
@@ -561,7 +561,7 @@ def create_usersGroups(groupsInformation=None, verbose=False):
     if _token != "" and _date_limit > _time.time()+500 :
         _token = _token
     else : 
-        _token = retrievingToken()
+        _token = retrieveToken()
     listOfData = list(_limitList(list_do,10))
     workers = min((len(listOfData),10))
     if verbose:
@@ -609,7 +609,7 @@ def remove_users(usersInformation=None, verbose=False):
     if _token != "" and _date_limit > _time.time()+500 :
         _token = _token
     else : 
-        _token = retrievingToken()
+        _token = retrieveToken()
     listOfData = list(_limitList(list_do,10))
     workers = min((len(listOfData),10))
     if verbose:
@@ -650,7 +650,7 @@ def remove_usersGroups(groupsInformation=None, verbose=False):
     if _token != "" and _date_limit > _time.time()+500 :
         _token = _token
     else : 
-        _token = retrievingToken()
+        _token = retrieveToken()
     listOfData = list(_limitList(list_do,10))
     workers = min((len(listOfData),10))
     if verbose:
