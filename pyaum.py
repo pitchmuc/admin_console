@@ -105,7 +105,6 @@ def retrieveToken(verbose=False):
         "iss": _org_id, ###org_id
         "sub": _tech_id,###technical_account_id
         "https://ims-na1.adobelogin.com/s/ent_user_sdk": True,
-        "https://ims-na1.adobelogin.com/s/ent_analytics_bulk_ingest_sdk": True,
         "aud": "https://ims-na1.adobelogin.com/c/"+_api_key
     }
     encoded_jwt = _jwt.encode(jwtPayload, private_key_unencrypted , algorithm='RS256')##working algorithm
@@ -200,7 +199,7 @@ def _request_users(page,umapi_header):
     while request_users.status_code in _status_codes_errors:##Check if we have done too many request in a period of time
         try_nb += 1
         if try_nb<=5:
-            print('Issue Retrieving information.\nError Code : '+request_users.status_code+'\nTrying Again in 60s.')
+            print('Issue Retrieving information.\nError Code : '+str(request_users.status_code)+'\nTrying Again in 60s.')
             _time.sleep(60)
             request_users = _requests.get(_endpoint+_getUsers+str(page),headers=umapi_header)
         else:
@@ -217,8 +216,8 @@ def _request_users_group(page,groupName,umapi_header):
     request_users = _requests.get(_endpoint+_getUsers+str(page)+'/'+groupName,headers=umapi_header)
     try_nb = 0
     while request_users.status_code in _status_codes_errors:##Check if we have done too many request in a period of time
-        try_nb += 1
         if try_nb<=5:
+            try_nb += 1
             print('Issue Retrieving information.\nError Code : '+request_users.status_code+'\nTrying Again in 60s.')
             _time.sleep(60)
             request_users = _requests.get(_endpoint+_getUsers+str(page),headers=umapi_header)
@@ -235,8 +234,8 @@ def _request_single_user(userEmail,umapi_header):
     request_users = _requests.get(_endpoint+_getSingleUser+userEmail,headers=umapi_header)
     try_nb = 0
     while request_users.status_code in _status_codes_errors:##Check if we have done too many request in a period of time
-        try_nb += 1
         if try_nb<=5:
+            try_nb += 1
             print('Issue Retrieving information.\nError Code : '+request_users.status_code+'\nTrying Again in 60s.')
             _time.sleep(60)
             request_users = _requests.get(_endpoint+_getSingleUser+userEmail,headers=umapi_header)
@@ -253,26 +252,30 @@ def _request_groups(page,umapi_header):
     """ Taking care of requesting the users info and check if there is an issue"""
     request_groups = _requests.get(_endpoint+_getGroups+str(page),headers=umapi_header)
     #print(request_groups.request.url)
+    #print(_json.dumps(request_groups.json(),indent=4))
     try_nb = 0
-    while request_groups.status_code in _status_codes_errors:##Check if we have done too many request in a period of time
-        try_nb += 1
-        if try_nb<=5:
-            print('Issue Retrieving information.\nError Code : '+request_groups.status_code+'\nTrying Again in 60s.')
-            _time.sleep(60)
-            request_groups = _requests.get(_endpoint+_getUsers+str(page),headers=umapi_header)
-        else:
-            request_groups = {'lastPage':True,'groups':['issue with the API request']}
+    if request_groups.status_code in _status_codes_errors:##Check if we have done too many request in a period of time
+        print('Issue : ' + request_groups.request.url)
+        while try_nb<=5 and request_groups.status_code in _status_codes_errors:
+            try_nb += 1
+            print('Issue Retrieving information.\nError Code : '+str(request_groups.status_code)+'\nTrying Again in 90s.')
+            _time.sleep(90)
+            request_groups = _requests.get(_endpoint+_getGroups+str(page),headers=umapi_header)
+            print('new try : '+str(request_groups.status_code))
     request_groups_json = request_groups.json()
+    if 'groups' not in request_groups_json.keys():
+        request_groups_json['groups'] = ['issue with the API request']
     if request_groups_json.get('result','success') != 'success': ## taking care in case problem with setup provided
+        print(_json.dumps(request_groups_json,indent=4))
         request_groups_json = {'lastPage':True,'groups':[request_groups_json['message']]}
+        print('setting lastPage manually to True')
     last_page = request_groups_json['lastPage']
     list_groups = request_groups_json['groups']## stack the users
     return list_groups, last_page
 
-def _users_recursive_request(umapi_header,request_type='users',groupName=None,userEmail=None,last_page=False,page=-1):
+def _users_recursive_request(umapi_header,request_type='users',groupName=None,userEmail=None,last_page=False,page=0):
     full_list_users=[]
     while last_page != True:
-        page+=1
         if request_type == 'groups':
             if groupName==None: ## in case no group name has been given
                 request_type ='user'
@@ -283,17 +286,18 @@ def _users_recursive_request(umapi_header,request_type='users',groupName=None,us
             response = _request_users(page,umapi_header)
         full_list_users +=response[0]
         last_page = response[1]
+        page+=1
     df = _pd.DataFrame(full_list_users)
     df.fillna('',inplace=True)
     return df
 
-def _groups_recursive_request(umapi_header,last_page=False,page=-1):
+def _groups_recursive_request(umapi_header,last_page=False,page=0):
     full_list_groups=[]
     while last_page != True:
-        page+=1
         response = _request_groups(page,umapi_header)
         full_list_groups +=response[0]
         last_page = response[1]
+        page+=1
     df = _pd.DataFrame(full_list_groups)
     df.fillna('',inplace=True)
     return df
